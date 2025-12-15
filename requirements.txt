@@ -1,0 +1,5 @@
+# VSCode Proxy Manager Dependencies
+# Python 3.6+
+
+# YAML configuration file parsing
+PyYAML>=5.1

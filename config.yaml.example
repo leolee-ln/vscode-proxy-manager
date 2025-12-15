@@ -1,0 +1,44 @@
+# VSCode代理管理器配置文件示例
+# 复制此文件为 config.yaml 并根据需要修改
+
+proxy:
+  # 代理服务器地址
+  # 示例: "localhost", "127.0.0.1", "proxy.example.com"
+  host: "localhost"
+  
+  # 代理服务器端口
+  # 常见端口: 7890 (Clash), 1080 (SOCKS), 8118 (Privoxy)
+  port: 7890
+  
+  # 是否默认启用代理
+  enabled: true
+  
+  # 代理支持模式
+  # - "override": 覆盖系统代理设置
+  # - "on": 总是使用代理
+  # - "off": 不使用代理
+  proxy_support: "override"
+  
+  # 是否严格验证 SSL 证书
+  # 如果使用自签名证书，设置为 false
+  strict_ssl: false
+
+# Python配置
+python:
+  # Python解释器路径
+  # 留空则使用系统默认的 python3
+  # 示例: "/usr/bin/python3", "/home/user/.pyenv/shims/python", "/opt/anaconda3/bin/python"
+  interpreter: ""
+  
+# 备份配置
+backup:
+  # 是否启用自动备份
+  # 强烈建议保持启用，以防配置错误
+  enabled: true
+  
+  # 备份文件后缀
+  suffix: ".backup"
+  
+  # 保留的最大备份数量
+  # 旧的备份会被自动删除
+  max_backups: 5
