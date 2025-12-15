@@ -43,7 +43,7 @@ config.yaml
 *.backup.*
 
 # Git commit message template
-.git-commit-message.txt
+.git-commit-message*.txt
 
 # Logs
 *.log

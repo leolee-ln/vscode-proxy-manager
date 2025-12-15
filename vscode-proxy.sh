@@ -21,12 +21,13 @@ else
 fi
 
 # 从配置文件读取Python解释器路径
-PYTHON_PATH=$(grep -A1 'interpreter:' "$CONFIG_FILE" | tail -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+PYTHON_PATH=""
+if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ]; then
+    # 读取 interpreter 配置项的值（支持 YAML 格式）
+    PYTHON_PATH=$(grep 'interpreter:' "$CONFIG_FILE" | sed 's/.*interpreter:[[:space:]]*//;s/^["\x27]//;s/["\x27]$//' | tr -d '\r')
+fi
 
-# 清理Python路径（移除可能的引号）
-PYTHON_PATH=$(echo "$PYTHON_PATH" | sed "s/^['\"]//;s/['\"]$//")
-
-# 如果配置中未指定Python路径，则使用系统默认
+# 如果配置中未指定Python路径或为空，则使用系统默认
 if [ -z "$PYTHON_PATH" ] || [ "$PYTHON_PATH" = '""' ] || [ "$PYTHON_PATH" = "''" ]; then
     PYTHON_PATH="python3"
 fi

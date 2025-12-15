@@ -5,6 +5,18 @@
 本文件格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.1] - 2025-12-15
+
+### 修复
+- 修复 vscode-proxy.sh 无法正确读取配置文件中 Python 解释器路径的问题
+- 修复当配置文件不存在时 grep 命令报错的问题
+- 改进 YAML 配置解析逻辑，正确提取 `interpreter:` 字段的值
+
+### 改进
+- 增强配置文件读取的健壮性
+- 添加配置文件存在性检查
+- 优化引号和换行符处理
+
 ## [1.0.0] - 2025-12-15
 
 ### 新增功能
