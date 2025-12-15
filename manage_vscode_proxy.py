@@ -5,7 +5,7 @@ VSCode Server 代理配置管理器
 
 Author: Nan Li
 License: MIT
-Version: 1.0.0
+Version: 1.0.2
 """
 
 import os
@@ -17,7 +17,7 @@ import shutil
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 # 配置日志
 logging.basicConfig(
@@ -168,6 +168,72 @@ class VSCodeProxyManager:
             logger.error(f"读取设置文件失败: {e}")
             return {}
     
+    def _check_and_show_changes(self, current_settings: Dict[str, Any], new_config: Dict[str, Any]) -> bool:
+        """
+        检查并显示配置变化
+        
+        Args:
+            current_settings: 当前设置
+            new_config: 新的代理配置
+            
+        Returns:
+            bool: 是否有变化
+        """
+        changes = []
+        
+        for key, new_value in new_config.items():
+            old_value = current_settings.get(key)
+            
+            # 特殊处理 http.proxy，隐藏可能的密码信息
+            if key == "http.proxy":
+                old_display = self._mask_proxy_url(old_value) if old_value else None
+                new_display = self._mask_proxy_url(new_value)
+                
+                if old_value != new_value:
+                    if old_value is None:
+                        changes.append(f"  + {key}: {new_display}")
+                    else:
+                        changes.append(f"  ~ {key}: {old_display} → {new_display}")
+            else:
+                if old_value != new_value:
+                    if old_value is None:
+                        changes.append(f"  + {key}: {new_value}")
+                    else:
+                        changes.append(f"  ~ {key}: {old_value} → {new_value}")
+        
+        if changes:
+            logger.info("检测到配置变化:")
+            for change in changes:
+                print(change)
+            return True
+        
+        return False
+    
+    def _mask_proxy_url(self, proxy_url: Optional[str]) -> Optional[str]:
+        """
+        遮蔽代理URL中的密码信息
+        
+        Args:
+            proxy_url: 代理URL
+            
+        Returns:
+            str: 遮蔽后的URL
+        """
+        if not proxy_url:
+            return None
+            
+        # 检查是否包含认证信息
+        if '@' in proxy_url:
+            # 格式: http://username:password@host:port
+            protocol, rest = proxy_url.split('://', 1)
+            auth, host = rest.split('@', 1)
+            
+            if ':' in auth:
+                username = auth.split(':')[0]
+                return f"{protocol}://{username}:****@{host}"
+        
+        return proxy_url
+    
     def save_settings(self, settings: Dict[str, Any]) -> bool:
         """
         保存设置到文件
@@ -199,6 +265,45 @@ class VSCodeProxyManager:
             logger.error(f"保存设置失败: {e}")
             return False
     
+    def check_proxy_changes(self, enable: bool, host: Optional[str] = None, port: Optional[int] = None) -> Tuple[bool, Optional[str]]:
+        """
+        检查代理配置是否会发生变化
+        
+        Args:
+            enable: 是否启用代理
+            host: 代理主机（可选，默认使用配置）
+            port: 代理端口（可选，默认使用配置）
+            
+        Returns:
+            tuple[bool, Optional[str]]: (是否有变化, 变化描述或None)
+        """
+        try:
+            settings = self.load_settings()
+            
+            if enable:
+                # 构建新的代理配置
+                proxy_host = host or self.config['proxy']['host']
+                proxy_port = port or self.config['proxy']['port']
+                proxy_url = f"http://{proxy_host}:{proxy_port}"
+                
+                proxy_config = {
+                    "http.proxySupport": self.config['proxy']['proxy_support'],
+                    "http.proxy": proxy_url,
+                    "http.proxyStrictSSL": self.config['proxy']['strict_ssl']
+                }
+                
+                # 检查变化
+                has_changes = self._check_and_show_changes(settings, proxy_config)
+                return has_changes, None
+            else:
+                # 检查是否已经禁用
+                has_proxy = any(key in settings for key in ["http.proxy", "http.proxySupport", "http.proxyStrictSSL"])
+                return has_proxy, None
+                
+        except Exception as e:
+            logger.error(f"检查配置变化失败: {e}")
+            return True, None  # 发生错误时，假设有变化以允许操作继续
+    
     def set_proxy(self, enable: bool, host: Optional[str] = None, port: Optional[int] = None) -> bool:
         """
         设置或移除代理
@@ -212,10 +317,6 @@ class VSCodeProxyManager:
             bool: 操作是否成功
         """
         try:
-            # 备份原始设置
-            if not self.backup_settings():
-                print("警告: 备份失败，继续操作...")
-            
             # 加载当前设置
             settings = self.load_settings()
             
@@ -233,14 +334,20 @@ class VSCodeProxyManager:
                     "http.proxy": proxy_url,
                     "http.proxyStrictSSL": self.config['proxy']['strict_ssl']
                 }
+                
+                # 备份原始设置
+                if not self.backup_settings():
+                    print("警告: 备份失败，继续操作...")
+                
+                # 更新设置
+                settings.update(proxy_config)
                 logger.info(f"设置代理: {proxy_url}")
             else:
+                # 备份原始设置
+                if not self.backup_settings():
+                    print("警告: 备份失败，继续操作...")
+                
                 logger.info("移除代理配置")
-            
-            # 更新设置
-            if enable:
-                settings.update(proxy_config)
-            else:
                 # 移除代理相关配置
                 settings.pop("http.proxySupport", None)
                 settings.pop("http.proxy", None)
@@ -352,6 +459,14 @@ def main():
     
     # 根据action执行操作
     if args.action in ['enable', 'on']:
+        # 先检查是否有变化
+        has_changes, _ = manager.check_proxy_changes(True, args.host, args.port)
+        
+        if not has_changes:
+            logger.info("代理配置未发生变化")
+            print("✓ 代理配置已是最新状态")
+            return 0
+        
         # 确认操作
         if not args.yes:
             confirm = input("确定要启用代理吗？(y/N): ")
@@ -368,6 +483,14 @@ def main():
             return 1
             
     elif args.action in ['disable', 'off']:
+        # 先检查是否有变化
+        has_changes, _ = manager.check_proxy_changes(False)
+        
+        if not has_changes:
+            logger.info("代理配置已经处于禁用状态")
+            print("✓ 代理配置已是禁用状态")
+            return 0
+        
         # 确认操作
         if not args.yes:
             confirm = input("确定要禁用代理吗？(y/N): ")

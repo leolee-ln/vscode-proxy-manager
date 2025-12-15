@@ -8,11 +8,14 @@
 ## 功能特性
 
 - ✅ 快速启用/禁用 VSCode Server 的代理配置
+- ✅ 智能检测配置变化，避免重复操作
 - ✅ 支持自定义代理主机和端口
 - ✅ 自动备份配置文件（支持多版本备份）
+- ✅ 仅在配置变化时生成备份，保持备份整洁
 - ✅ 灵活的 YAML 配置文件
 - ✅ 命令行友好的操作界面
 - ✅ 查看当前代理状态
+- ✅ 代理密码信息自动隐藏显示
 
 ## 应用场景
 
@@ -33,7 +36,7 @@ pip install -r requirements.txt
 
 安装后可在任何位置使用 `vscode-proxy` 命令。
 
-### 方式 2: 本地使用
+### 方式 2: 本地使用（不安装到系统）
 
 ```bash
 git clone https://github.com/leolee-ln/vscode-proxy-manager.git
@@ -44,9 +47,15 @@ pip install -r requirements.txt
 ./vscode-proxy.sh enable
 ```
 
-### 方式 3: 手动安装依赖
+## 依赖要求
+
+本工具需要 Python 3.6+ 和以下依赖：
 
 ```bash
+# 自动安装所有依赖
+pip install -r requirements.txt
+
+# 或手动安装
 pip install PyYAML
 ```
 
@@ -131,6 +140,27 @@ python manage_vscode_proxy.py on    # 等同于 enable
 python manage_vscode_proxy.py off   # 等同于 disable
 ```
 
+### 更新配置
+
+如果修改了配置文件（如更改代理地址或端口），可以直接再次执行 `enable` 命令应用新配置：
+
+```bash
+# 1. 修改配置文件
+vim /etc/vscode-proxy/proxy.conf    # 系统安装
+# 或
+vim config.yaml                     # 本地使用
+
+# 2. 应用新配置
+vscode-proxy enable
+
+# 工具会自动检测配置变化并显示：
+# INFO: 检测到配置变化:
+#   ~ http.proxy: http://localhost:7890 → http://localhost:8080
+# 确定要启用代理吗？(y/N):
+```
+
+**提示**：如果配置未发生变化，工具会显示"代理配置已是最新状态"并直接退出，无需确认。
+
 ### 快速设置
 
 **方式 1: 使用安装脚本（推荐）**
@@ -190,8 +220,30 @@ source ~/.bashrc  # 或 source ~/.zshrc
 
 - 默认启用自动备份功能
 - 备份文件格式：`settings.json.backup.YYYYmmdd_HHMMSS`
+- 智能备份：仅在配置实际发生变化时才创建备份
 - 自动清理旧备份，保留最近 5 个备份文件
 - 可通过配置文件调整备份策略
+
+## 配置变化检测
+
+工具会在执行操作前自动检测配置变化：
+
+- **启用代理时**：
+  - 如果配置未发生变化，显示"代理配置已是最新状态"并退出
+  - 如果有变化，显示具体变化内容并询问确认
+  - 示例输出：
+    ```
+    INFO: 检测到配置变化:
+      ~ http.proxy: http://localhost:7890 → http://localhost:8080
+    ```
+
+- **禁用代理时**：
+  - 如果已处于禁用状态，显示"代理配置已是禁用状态"并退出
+  - 如果需要禁用，询问确认后执行
+
+- **密码隐藏**：
+  - 如果代理 URL 包含密码，自动隐藏显示
+  - 格式：`http://username:****@host:port`
 
 ## 常见问题
 
@@ -202,6 +254,10 @@ A: 如果文件不存在，工具会自动创建。这通常发生在首次使�
 ### Q: 如何恢复到之前的配置？
 
 A: 备份文件保存在 `~/.vscode-server/data/Machine/` 目录下，手动复制备份文件即可恢复。
+
+### Q: 修改配置文件后如何应用？
+
+A: 直接再次执行 `vscode-proxy enable` 命令即可。工具会自动检测配置变化，显示差异并询问确认。如果配置没有变化，会直接提示并退出。
 
 ### Q: 代理设置后不生效？
 
@@ -232,9 +288,10 @@ Nan Li ([@leolee-ln](https://github.com/leolee-ln))
 
 ## 更新日志
 
-### v1.0.0 (2025-12-15)
+完整的更新日志请查看 [CHANGELOG.md](CHANGELOG.md)。
 
-- 初始版本发布
-- 支持启用/禁用代理配置
-- 自动备份功能
-- YAML 配置文件支持
+### 最新版本
+
+- **v1.0.2** (2025-12-15) - 功能增强：智能配置检测、优化用户体验
+- **v1.0.1** (2025-12-15) - Bug 修复版本
+- **v1.0.0** (2025-12-15) - 首次发布
